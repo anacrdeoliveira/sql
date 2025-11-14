@@ -20,6 +20,31 @@ The `||` values concatenate the columns into strings.
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
 
+/* */
+
+
+
+
+/*  first idea, to be on the safe side, I am creating a temporary table and deleting stuff on it!
+
+CREATE TEMPORARY TABLE temp_product AS
+SELECT *
+FROM product;
+
+DELETE FROM temp_product
+WHERE product_name IS NULL
+   OR product_size IS NULL
+   OR product_qty_type IS NULL 
+   
+   Then I realized i didnt need to delete data */ 
+
+
+SELECT 
+    COALESCE(product_name, '') || ', ' || 
+    COALESCE(product_size, '') || ' (' || 
+    COALESCE(product_qty_type, 'unit') || ')'
+FROM product
+
 
 
 --Windowed Functions
@@ -32,16 +57,70 @@ each new market date for each customer, or select only the unique market dates p
 (without purchase details) and number those visits. 
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
+/* Option 1 */
+
+SELECT customer_id, market_date,
+ROW_NUMBER() OVER (
+        PARTITION BY customer_id 
+        ORDER BY market_date 
+    ) AS customer_visit_n
+
+FROM customer_purchases
+
+/* Option 2 - I don't understand this one very well */
+
+SELECT 
+    customer_id, market_date,
+    DENSE_RANK() OVER (
+        PARTITION BY customer_id 
+        ORDER BY market_date
+    ) AS customer_visit_n
+FROM (
+    SELECT DISTINCT customer_id, market_date
+    FROM customer_purchases
+) AS customer_visit_n
+
 
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
 
+SELECT customer_id, market_date, customer_visit_n as [row_number]
+FROM(
+	
+	SELECT
+	customer_id, 
+	market_date, 
+	ROW_NUMBER() OVER (
+        PARTITION BY customer_id 
+        ORDER BY market_date
+		DESC
+    ) AS customer_visit_n
+
+FROM customer_purchases
+)
+WHERE customer_visit_n = 1
+
+
 
 
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
+
+
+/* I used DISTINCT because when there was more than one purchase on the same date, the table was repeating thwe values */
+
+SELECT DISTINCT
+    customer_id,
+    product_id,
+    COUNT(*) OVER (
+        PARTITION BY customer_id, product_id
+    ) AS times_purchased_product
+FROM customer_purchases
+
+
+
 
 
 
@@ -127,6 +206,9 @@ Third, SET current_quantity = (...your select statement...), remembering that WH
 Finally, make sure you have a WHERE statement to update the right row, 
 	you'll need to use product_units.product_id to refer to the correct row within the product_units table. 
 When you have all of these components, you can run the update statement. */
+
+
+
 
 
 
