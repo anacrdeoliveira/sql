@@ -177,7 +177,7 @@ CREATE VIEW IF NOT EXISTS vendor_daily_sales AS
 		
 	GROUP BY cp.market_date;--, v.vendor_id; -- remember that ; is needed at the end of the group by
 	
-SELECT * FROM vendor_daily_sales
+SELECT * FROM vendor_daily_sales;
 
 
 WITH RankedSales AS (
@@ -253,7 +253,7 @@ This can be any product you desire (e.g. add another record for Apple Pie). */
 
 
 INSERT INTO product_units
-VALUES('27','Brigadeiro','small','3','unit',CURRENT_TIMESTAMP)
+VALUES('27','Brigadeiro','small','3','unit',CURRENT_TIMESTAMP,NULL)
 
 
 
@@ -265,6 +265,25 @@ HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
 DELETE FROM product_units
 WHERE product_name = 'Brigadeiro'
 
+/* correction (I had to add a null on line 256 because the table now has one extra column  */
+
+DELETE FROM product_units
+WHERE snapshot_timestamp = (SELECT MIN(snapshot_timestamp) from product_units)
+
+ROLLBACK
+
+/* this actually deleted everything but the row I wanted to delete, so I had to ROLLBACK. Second attempt: */
+
+
+WITH older AS (
+    SELECT MIN(snapshot_timestamp) AS min_t
+    FROM product_units
+)
+DELETE FROM product_units as p
+WHERE p.snapshot_timestamp != (SELECT min_t FROM older);
+
+
+/* it worked once I used !=  */
 
 
 -- UPDATE
